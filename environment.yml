@@ -1,0 +1,17 @@
+name: geoduds
+channels:
+  - conda-forge
+dependencies:
+  - ipykernel
+  - requests
+  - ca-certificates
+  - openssl
+  - rasterio
+  - certifi
+  - gdal
+  - libgdal-jp2openjpeg
+  - matplotlib
+  - harp
+  - cartopy
+  - cmcrameri
+prefix: /home/eouser/miniforge3/envs/geoduds

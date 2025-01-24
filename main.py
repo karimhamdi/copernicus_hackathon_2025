@@ -7,12 +7,17 @@ from folium.plugins import HeatMap # type: ignore
 from folium import plugins # type: ignore
 import branca  # type: ignore
 from streamlit.components.v1 import html  # type: ignore
+import json
 
 
 if 'sidebar_state' not in st.session_state:
     st.session_state.sidebar_state = 'collapsed'
 if 'open_sidebar' not in st.session_state:
     st.session_state.open_sidebar = True
+if 'lat' not in st.session_state:
+    st.session_state.lat = None
+if 'lng' not in st.session_state:
+    st.session_state.lng = None
 
 
 st.set_page_config(page_title="Heatmap dies das",
@@ -22,21 +27,26 @@ st.set_page_config(page_title="Heatmap dies das",
                 )
 
 #Data:
-DATA = {
-    "lat": [52.5200, 48.8566, 40.7128, 34.0522, 35.6895],
-    "lon": [13.4050, 2.3522, -74.0060, -118.2437, 139.6917],
-    "intensity": [10, 20, 30, 40, 50]
-}
+with open("data_1.json", "r") as file:
+    DATA2 = json.load(file)
+with open("data_2.json", "r") as file:
+    DATA = json.load(file)
+with open("data_3.json", "r") as file:
+    DATA3 = json.load(file)
+
+
+
+
 df = pd.DataFrame(DATA)
 
 #Heatmap:
-MIN_ZOOM = 2
+MIN_ZOOM = 5
 MAX_ZOOM=20
 
 heat_map = folium.Map(location=[50, 10], zoom_start=4, min_zoom=MIN_ZOOM, max_zoom=MAX_ZOOM, control_scale=True)
 
 #HeatMap(data, name=None, min_opacity=0.5, max_zoom=18, max_val=1.0, radius=25, blur=15, gradient=None, overlay=True, control=True, show=True)
-HeatMap(df.values).add_to(heat_map)
+HeatMap(df.values, min_opacity = 0.5, max_val = 1, overlay=True, radius=40, blur=30).add_to(heat_map)
 
 #Google Maps:
 folium.TileLayer(
@@ -47,17 +57,7 @@ folium.TileLayer(
     min_zoom = MIN_ZOOM,
     subdomains=["mt0", "mt1", "mt2", "mt3"],
 ).add_to(heat_map)
-
-
-#Legende: 
-colormap = branca.colormap.LinearColormap(
-    colors=['blue', 'green', 'yellow', 'orange', 'red'], 
-    vmin=0, vmax=50
-).to_step(n=5)  
-
-colormap.caption = "Lufttemperatur in Grad Celsius"
-colormap.add_to(heat_map)
-
+#folium.TileLayer('cartodb positron').add_to(heat_map)
 
 #Zoom Einschränkung:
 heat_map.options['maxBounds'] = [[-200, -200], [200, 200]]
@@ -95,23 +95,45 @@ geo_data = {
 folium.GeoJson(geo_data).add_to(heat_map)
 
 #heat_map.add_child(folium.ClickForMarker(popup="clicked here"))
+
+
+map_data = st_folium(heat_map, width=1920, height=1080, returned_objects=['last_clicked', 'zoom'])
 heat_map.add_child(folium.LatLngPopup())
-map_data = st_folium(heat_map, width=1920, height=1080, returned_objects=['last_clicked'])
 
-if map_data and map_data.get('last_clicked'):
+
+if map_data and map_data.get('last_clicked'): 
     lat, lng = map_data.get('last_clicked')["lat"],map_data.get('last_clicked')["lng"]
+    st.session_state.lat = lat
+    st.session_state.lng = lng
     print(f"Location lat:{lat},long:{lng}")
+    map_data = {'last_clicked': {'lat': 0, 'lng': 0}, 'zoom': map_data['zoom']}
+    
+    if map_data['zoom'] >= 19:
+        pass
+        #TOOD: Show Side Panel
 
 
-folium.Popup(f"TEST", max_width=300)
-st.sidebar.title("TEST")
-st.sidebar.write("TEST")
-st.sidebar.text_input("TEST")
+folium.Popup(f"", max_width=300)
+st.sidebar.title(f"Hausbericht")
+st.sidebar.write(f"{st.session_state.lat}")
+st.sidebar.write(f"{ st.session_state.lng}")
+#st.sidebar.text_input("TEST")
+
+#TODO: Formular zur beschwerde hinufügen
 
 if st.session_state.open_sidebar:
     st.session_state.sidebar_state = 'collapsed' if st.session_state.sidebar_state == 'expanded' else 'expanded'
     st.session_state.open_sidebar = False
     st.rerun()
+
+#Legende: 
+colormap = branca.colormap.LinearColormap(
+    colors=['blue', 'green', 'yellow', 'orange', 'red'], 
+    vmin=0, vmax=50
+).to_step(n=5)  
+
+colormap.caption = "Lufttemperatur in Grad Celsius"
+colormap.add_to(heat_map)
 
  
 #Map über den ganzen Bildschrim fitten:
